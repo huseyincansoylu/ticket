@@ -2,7 +2,7 @@
 
 ## Status
 
-Milestone 0 scaffolding in place. Workspace installs and typechecks cleanly.
+Milestone 1 in progress: TypeScript domain model drafted, Prisma schema next.
 
 ## Completed milestones
 
@@ -19,8 +19,17 @@ Milestone 0 scaffolding in place. Workspace installs and typechecks cleanly.
 
 ## Current step
 
-Milestone 1 — Domain and data model (event, venue, section, row, seat, hold, order, ticket).
+Milestone 1 — Domain and data model.
+
+- Done: TypeScript domain model drafted in `packages/shared-types/src/index.ts` — `Venue`,
+  `Section`, `Row`, `Seat` (physical inventory), `Event`, `EventSeat` (per-event seat status),
+  `Order`, `Ticket`, and the Redis-backed `Hold` type (no `id` — composite key is the identity).
+- Next: translate this into a Prisma schema for the booking-service's Postgres schema, with real
+  constraints (`@@unique([eventId, seatId])` on both `EventSeat` and `Ticket`).
 
 ## Open questions
 
-- None blocking milestone 1. Docker Compose still needs a live `docker compose up` smoke test.
+- Docker Compose still needs a live `docker compose up` smoke test (Docker daemon wasn't running
+  when milestone 0 was set up).
+- Which service's Postgres schema owns `Order`/`Ticket` — assumed booking-service for now (per
+  architecture doc), payment-service only tracks `Payment` records referencing `orderId`.
