@@ -1,0 +1,16 @@
+{
+  "name": "@ticket/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "echo \"web: not implemented yet (milestone 7)\"",
+    "lint": "echo \"web: no lint configured yet\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.10.0"
+  }
+}

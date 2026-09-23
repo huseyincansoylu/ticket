@@ -1,0 +1,16 @@
+{
+  "name": "@ticket/api-gateway",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "echo \"api-gateway: not implemented yet (milestone 1)\"",
+    "lint": "echo \"api-gateway: no lint configured yet\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.10.0"
+  }
+}
