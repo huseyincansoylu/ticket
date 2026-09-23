@@ -2,7 +2,7 @@
 
 ## Status
 
-Milestone 3 complete: automated test proves zero double booking under real concurrency.
+Milestone 4 in progress: payment-service boilerplate scaffolded, core payment/webhook logic next.
 
 ## Completed milestones
 
@@ -73,8 +73,24 @@ Milestone 4 — Payment service: iyzico sandbox, webhooks, idempotency.
   registered in Turkey (verified: only ~46 countries supported, Turkey not among them, and this
   applies to test mode too since account creation itself is country-gated). See
   [ADR 0003](./adr/0003-payment-provider-iyzico-not-stripe.md). `CLAUDE.md` updated accordingly.
-- Next: sign up for an iyzico sandbox account, then start with the webhook concept (what problem
-  it solves, signature verification) before writing any payment-service code.
+- iyzico sandbox account created, API key/secret key obtained.
+- `payment-service` boilerplate: NestJS 11 (matching booking-service's setup), `PrismaModule`
+  (own `payment` Postgres schema, `Payment` model with a `@unique idempotencyKey`),
+  `IyzicoModule` (client provider), `PaymentsModule`/`PaymentsController`
+  (`POST /orders/:orderId/payment`, `POST /webhooks/iyzico`). Boots cleanly, routes resolve.
+- Found two more Prisma 7 gotchas while wiring this up (in addition to milestone 3's NestJS/ESM
+  one) — see [ADR 0004](./adr/0004-prisma-v7-multi-service-gotchas.md): (1) `_prisma_migrations`
+  defaults to the `public` schema regardless of the `schemas` array, so two services sharing one
+  Postgres instance collide unless `DATABASE_URL` includes `?schema=<service-schema>`; (2) the
+  `prisma-client` generator emits real `.ts` source that must live under `rootDir` (`src/`), not
+  beside it; (3) Postgres now needs an explicit `@prisma/adapter-pg` driver adapter passed to
+  `new PrismaClient({ adapter })`. Fixed for payment-service; booking-service's Prisma output path
+  updated for consistency (it doesn't use its generated client in code yet, so no adapter/`?schema`
+  changes needed there yet).
+- Not done yet: `PaymentsService.initiatePayment` and `PaymentsService.handleWebhook` — both
+  stubbed (`throw new Error("not implemented")`). This is the milestone's actual business logic
+  (idempotent payment creation via iyzico's checkout form, webhook signature verification,
+  idempotent webhook processing) — intentionally left for hands-on implementation.
 
 ## Open questions
 

@@ -1,0 +1,38 @@
+datasource db {
+  provider = "postgresql"
+  schemas  = ["payment"]
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+
+  @@schema("payment")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  // References booking-service's Order.id. No foreign key across schemas —
+  // payment-service doesn't own that table, it only stores the reference.
+  orderId         String
+  status          PaymentStatus @default(PENDING)
+  amount          Decimal
+  currency        String
+  // iyzico's own identifier for the payment, once known (null until the
+  // checkout form flow actually creates one).
+  iyzicoPaymentId String?
+  // Client-generated key (e.g. derived from orderId) — a second Payment row
+  // with the same idempotencyKey must be rejected. This is what prevents a
+  // double click / duplicate webhook from creating two payment attempts.
+  idempotencyKey  String        @unique
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@schema("payment")
+}

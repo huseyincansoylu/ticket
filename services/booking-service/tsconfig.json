@@ -8,6 +8,5 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "include": ["src"],
-  "exclude": ["generated"]
+  "include": ["src"]
 }
