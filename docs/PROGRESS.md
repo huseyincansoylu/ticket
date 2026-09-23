@@ -2,7 +2,7 @@
 
 ## Status
 
-Milestone 2 complete: booking-service seat holds implemented and verified live via Postman.
+Milestone 3 complete: automated test proves zero double booking under real concurrency.
 
 ## Completed milestones
 
@@ -52,9 +52,22 @@ Milestone 2 complete: booking-service seat holds implemented and verified live v
   (right user) → released: true, re-acquire after release → 201, get → correct hold with
   `expiresAt`.
 
+### Milestone 3 — Concurrency tests proving zero double booking
+
+- Jest + ts-jest wired up for booking-service (`pnpm test`). Pinned all `@nestjs/*` packages to
+  `^11` instead of `^12` — `@nestjs/common@12` ships as ESM-only (`"type": "module"`), which
+  Jest's CommonJS test runner cannot `require()`, even with `transformIgnorePatterns` fixed for
+  pnpm's nested `.pnpm/` store layout and a `babel-jest` transform added specifically for it. `^11`
+  is still CommonJS and sidesteps the whole problem. See the update at the bottom of
+  [ADR 0002](./adr/0002-nestjs-services-use-commonjs.md).
+- `holds.service.concurrency.spec.ts`: fires 50 concurrent `acquireHold` calls (different
+  `userId`s) at the same `eventId`/`seatId` via `Promise.all`, against a real Redis instance (not
+  mocked). Asserts exactly 1 resolves `true`. Passes — `SET NX EX`'s atomicity guarantee is now
+  proven by an automated, repeatable test, not just manual Postman checks.
+
 ## Current step
 
-Milestone 3 — Concurrency tests proving zero double booking.
+Milestone 4 — Payment service: Stripe test mode, webhooks, idempotency.
 
 ## Open questions
 
@@ -62,7 +75,12 @@ Milestone 3 — Concurrency tests proving zero double booking.
   architecture doc), payment-service only tracks `Payment` records referencing `orderId`.
 - Reminder: Postgres is on host port **5433**, not 5432; booking-service is on **4001**, not the
   NestJS default 3001 — both because of pre-existing unrelated local processes on this machine.
-- No automated tests yet for `HoldsService` — milestone 3 is exactly this (concurrency tests).
+- Redis has no password in `docker-compose.yml` (unlike Postgres/RabbitMQ) — flagged, not yet
+  fixed. Low risk locally, must fix before any real deployment.
 - `api-gateway` is still an unbuilt placeholder. Clarified with the user: the CLAUDE.md "no more
   than three backend services" non-goal refers to the three domain services (booking, payment,
   notification) — the gateway is an edge/routing layer, not counted against that limit.
+- Deployment (milestone 11) direction discussed but not decided: single VPS + docker-compose
+  (paid, ~$5-6/mo, e.g. Hetzner/DigitalOcean) vs. Oracle Cloud Always Free VM (same approach, free,
+  but free-tier signup has more friction) vs. Railway (usage-based billing, likely exceeds the
+  free/hobby credit for our ~8-service stack, and docker-compose doesn't import 1:1).

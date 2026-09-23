@@ -23,16 +23,15 @@ describe("HoldsService — concurrency", () => {
   });
 
   it("lets only one acquireHold succeed when many happen at the same time", async () => {
-    // TODO: fire N (e.g. 50) concurrent acquireHold calls for the SAME
-    // eventId/seatId, each with a DIFFERENT userId (e.g. "user-0".."user-49"),
-    // using Promise.all so they actually run concurrently rather than one
-    // after another.
-    //
-    // Hint: build an array of N promises with .map(), each calling
-    // holds.acquireHold(eventId, seatId, `user-${i}`).
-    //
-    // Hint: Promise.all(promises) resolves to an array of N booleans, in the
-    // same order you started them. Count how many are `true` — assert it's
-    // exactly 1 (use Array.prototype.filter).
+    const concurrentUsers = 50;
+
+    const promises = Array.from({ length: concurrentUsers }, (_, i) =>
+      holds.acquireHold(eventId, seatId, `user-${i}`),
+    );
+
+    const results = await Promise.all(promises);
+
+    const successes = results.filter((result) => result === true);
+    expect(successes).toHaveLength(1);
   });
 });
