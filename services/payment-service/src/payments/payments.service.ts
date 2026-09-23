@@ -1,5 +1,6 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import type Iyzipay from "iyzipay";
+import * as crypto from "node:crypto";
 import { IYZICO_CLIENT } from "../iyzico/iyzico.module";
 import { PRISMA_CLIENT } from "../prisma/prisma.module";
 import type { PrismaClient } from "../generated/prisma/client";
@@ -129,7 +130,51 @@ export class PaymentsService {
    *    (SUCCEEDED/FAILED) — if so, this is a duplicate delivery, do nothing
    *    and return early. Only update status on the first delivery.
    */
-  async handleWebhook(body: unknown, headers: Record<string, unknown>) {
-    throw new Error("not implemented");
+  async handleWebhook(body: any, headers: Record<string, unknown>) {
+    // 1. Verify the signature before trusting anything in `body`.
+    const secretKey = process.env.IYZICO_SECRET_KEY ?? "";
+    const message = `${body.iyziEventType}${body.paymentId}${body.paymentConversationId}${body.status}`;
+    const expectedSignature = crypto.createHmac("sha256", secretKey).update(message).digest("hex");
+
+    const receivedSignature = headers["x-iyz-signature-v3"];
+    if (typeof receivedSignature !== "string") {
+      throw new UnauthorizedException("Missing webhook signature");
+    }
+
+    const expectedBuffer = Buffer.from(expectedSignature, "hex");
+    const receivedBuffer = Buffer.from(receivedSignature, "hex");
+
+    // timingSafeEqual throws if the buffers differ in length, so check that
+    // first — a plain `!==` on lengths leaks no useful timing information.
+    const signatureValid =
+      expectedBuffer.length === receivedBuffer.length && crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
+
+    if (!signatureValid) {
+      throw new UnauthorizedException("Invalid webhook signature");
+    }
+
+    // 2. Idempotency: look up the Payment this webhook refers to.
+    const idempotencyKey = `payment:${body.paymentConversationId}`;
+    const payment = await this.prisma.payment.findUnique({ where: { idempotencyKey } });
+
+    if (!payment) {
+      // Signature was valid but we have no matching Payment — nothing to do.
+      return { received: true };
+    }
+
+    if (payment.status === "SUCCEEDED" || payment.status === "FAILED") {
+      // Already in a terminal state — this is a duplicate delivery, ignore it.
+      return { received: true };
+    }
+
+    await this.prisma.payment.update({
+      where: { idempotencyKey },
+      data: {
+        status: body.status === "SUCCESS" ? "SUCCEEDED" : "FAILED",
+        iyzicoPaymentId: body.paymentId,
+      },
+    });
+
+    return { received: true };
   }
 }

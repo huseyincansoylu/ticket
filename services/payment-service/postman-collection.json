@@ -1,0 +1,44 @@
+{
+  "info": {
+    "name": "payment-service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4002" },
+    { "key": "orderId", "value": "order-demo-1" }
+  ],
+  "item": [
+    {
+      "name": "Initiate payment (POST)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": \"100.00\",\n  \"currency\": \"TRY\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/orders/{{orderId}}/payment",
+          "host": ["{{baseUrl}}"],
+          "path": ["orders", "{{orderId}}", "payment"]
+        }
+      }
+    },
+    {
+      "name": "iyzico webhook (POST) - fixture",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"iyziEventType\": \"API_AUTH\",\n  \"paymentConversationId\": \"{{orderId}}\",\n  \"status\": \"SUCCESS\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/webhooks/iyzico",
+          "host": ["{{baseUrl}}"],
+          "path": ["webhooks", "iyzico"]
+        }
+      }
+    }
+  ]
+}

@@ -2,8 +2,9 @@
 
 ## Status
 
-Milestone 4 in progress: initiatePayment implemented and verified against a live iyzico sandbox
-call (real success response). handleWebhook is next.
+Milestone 4 complete: initiatePayment and handleWebhook both implemented and verified end-to-end
+(live iyzico sandbox call + real HMAC-signed webhook, including rejection of a bad signature and
+correct no-op on duplicate delivery).
 
 ## Completed milestones
 
@@ -66,40 +67,42 @@ call (real success response). handleWebhook is next.
   mocked). Asserts exactly 1 resolves `true`. Passes — `SET NX EX`'s atomicity guarantee is now
   proven by an automated, repeatable test, not just manual Postman checks.
 
-## Current step
-
-Milestone 4 — Payment service: iyzico sandbox, webhooks, idempotency.
+### Milestone 4 — Payment service: iyzico sandbox, webhooks, idempotency
 
 - Payment provider switched from Stripe to iyzico — Stripe does not support merchant accounts
   registered in Turkey (verified: only ~46 countries supported, Turkey not among them, and this
   applies to test mode too since account creation itself is country-gated). See
   [ADR 0003](./adr/0003-payment-provider-iyzico-not-stripe.md). `CLAUDE.md` updated accordingly.
-- iyzico sandbox account created, API key/secret key obtained.
-- `payment-service` boilerplate: NestJS 11 (matching booking-service's setup), `PrismaModule`
-  (own `payment` Postgres schema, `Payment` model with a `@unique idempotencyKey`),
-  `IyzicoModule` (client provider), `PaymentsModule`/`PaymentsController`
-  (`POST /orders/:orderId/payment`, `POST /webhooks/iyzico`). Boots cleanly, routes resolve.
+- `payment-service` boilerplate: NestJS 11, `PrismaModule` (own `payment` Postgres schema,
+  `Payment` model with a `@unique idempotencyKey`), `IyzicoModule` (client provider),
+  `PaymentsModule`/`PaymentsController` (`POST /orders/:orderId/payment`,
+  `POST /webhooks/iyzico`).
 - Found two more Prisma 7 gotchas while wiring this up (in addition to milestone 3's NestJS/ESM
-  one) — see [ADR 0004](./adr/0004-prisma-v7-multi-service-gotchas.md): (1) `_prisma_migrations`
-  defaults to the `public` schema regardless of the `schemas` array, so two services sharing one
-  Postgres instance collide unless `DATABASE_URL` includes `?schema=<service-schema>`; (2) the
-  `prisma-client` generator emits real `.ts` source that must live under `rootDir` (`src/`), not
-  beside it; (3) Postgres now needs an explicit `@prisma/adapter-pg` driver adapter passed to
-  `new PrismaClient({ adapter })`. Fixed for payment-service; booking-service's Prisma output path
-  updated for consistency (it doesn't use its generated client in code yet, so no adapter/`?schema`
-  changes needed there yet).
-- `PaymentsService.initiatePayment` implemented: idempotency (try `payment.create`, catch Prisma
-  error code `P2002`, look up the existing row by `idempotencyKey` instead of creating a second
-  one — written by hand) + iyzico's `checkoutFormInitialize.create` call (dummy buyer/basket data,
-  since there's no buyer domain model yet).
-- Verified live against real iyzico sandbox: idempotency proven first (two requests for the same
-  `orderId`, including one that hit a transient `ECONNRESET` mid-call, still resulted in exactly
-  one `Payment` row in Postgres). Then, after adding a required `email` field the community
-  `@types/iyzipay` package doesn't mark as required, got a real `"status":"success"` response with
-  `checkoutFormContent`, `paymentPageUrl`, `payWithIyzicoPageUrl`, and a `signature` field — none
-  of which are in `CheckoutFormInitialResult`'s type, another type-package gap worth remembering.
-- Not done yet: `PaymentsService.handleWebhook` — stubbed (`throw new Error("not implemented")`).
-  Webhook signature verification and idempotent webhook processing, to be written by hand next.
+  one) — see [ADR 0004](./adr/0004-prisma-v7-multi-service-gotchas.md): `_prisma_migrations`
+  defaults to the `public` schema regardless of the `schemas` array (fix: `?schema=<name>` in
+  `DATABASE_URL`); the `prisma-client` generator emits real `.ts` source that must live under
+  `rootDir` (`src/`); Postgres needs an explicit `@prisma/adapter-pg` driver adapter passed to
+  `new PrismaClient({ adapter })`.
+- `PaymentsService.initiatePayment`: idempotency (try `payment.create`, catch Prisma error code
+  `P2002`, look up the existing row by `idempotencyKey` instead of creating a second one) +
+  iyzico's `checkoutFormInitialize.create` call. Verified live against the real sandbox: two
+  requests for the same `orderId` (one hit a transient `ECONNRESET`) still resulted in exactly one
+  `Payment` row; after adding a required `email` field the community `@types/iyzipay` package
+  doesn't mark as required, got a real `"status":"success"` response with `checkoutFormContent`,
+  `paymentPageUrl`, `payWithIyzicoPageUrl`, and a `signature` field — none of which are in that
+  package's `CheckoutFormInitialResult` type either.
+- `PaymentsService.handleWebhook`: HMAC-SHA256 signature verification
+  (`iyziEventType + paymentId + paymentConversationId + status`, hex-encoded, compared against the
+  `x-iyz-signature-v3` header with `crypto.timingSafeEqual` — never `===`, to avoid timing
+  attacks) + idempotent processing (no-op if the Payment is already in a terminal state). Verified
+  live with a real computed signature: wrong signature → 401, correct signature → Payment updated
+  `PENDING` → `SUCCEEDED` with `iyzicoPaymentId` set, duplicate delivery of the same webhook →
+  no-op (status unchanged, no error).
+- `services/payment-service/postman-collection.json` added for manual testing.
+
+## Current step
+
+Milestone 5 — RabbitMQ and the transactional outbox pattern.
 
 ## Open questions
 
