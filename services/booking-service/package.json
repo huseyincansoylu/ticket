@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "echo \"booking-service: not implemented yet (milestone 2)\"",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
     "lint": "echo \"booking-service: no lint configured yet\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:migrate": "prisma migrate dev",
@@ -13,12 +14,21 @@
     "db:studio": "prisma studio"
   },
   "devDependencies": {
+    "@types/express": "5.0.6",
     "@types/node": "^22.10.0",
     "prisma": "7.10.0",
+    "tsx": "4.23.15",
     "typescript": "^5.7.0"
   },
   "dependencies": {
+    "@nestjs/common": "12.1.0",
+    "@nestjs/core": "12.1.0",
+    "@nestjs/platform-express": "12.1.0",
     "@prisma/client": "7.10.0",
-    "dotenv": "^18.0.3"
+    "@ticket/shared-types": "workspace:*",
+    "dotenv": "^18.0.3",
+    "ioredis": "6.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
   }
 }

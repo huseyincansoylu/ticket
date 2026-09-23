@@ -36,10 +36,19 @@ Milestone 1 complete: domain model, Prisma schema, and a real migration against 
 
 Milestone 2 — Booking service: seat holds and expiration with Redis.
 
+- Done: NestJS chosen as the HTTP framework for all backend services. Boilerplate wired up for
+  booking-service — `RedisModule` (ioredis client provider), `HoldsModule`/`HoldsController`
+  (`POST`/`DELETE`/`GET` on `/events/:eventId/seats/:seatId/hold`), `AppModule`, `main.ts`.
+  Boots cleanly (`pnpm --filter @ticket/booking-service dev`), routes verified reachable.
+- Not done yet: `HoldsService` (`src/holds/holds.service.ts`) — `acquireHold`, `releaseHold`,
+  `getHold` are stubbed (`throw new Error("not implemented")`). This is the actual business
+  logic (SET NX EX for acquire, atomic Lua compare-and-delete for release) — intentionally left
+  for hands-on implementation rather than scaffolded.
+
 ## Open questions
 
 - Which service's Postgres schema owns `Order`/`Ticket` — assumed booking-service for now (per
   architecture doc), payment-service only tracks `Payment` records referencing `orderId`.
-- Reminder: Postgres is on host port **5433** in this environment, not the default 5432 — because
-  of the pre-existing native Postgres process. Anything connecting to this DB from outside Docker
-  needs to use 5433.
+- Reminder: Postgres is on host port **5433**, not 5432 (pre-existing native Postgres process on
+  this machine). booking-service also moved off its default port 3001 to **4001** for the same
+  reason (an unrelated local Node process was already on 3001).
