@@ -7,7 +7,9 @@ services:
       POSTGRES_PASSWORD: ticket
       POSTGRES_DB: ticket
     ports:
-      - "5432:5432"
+      # Host port 5433, not 5432 — a native Postgres process is already
+      # listening on 5432 on this machine (unrelated to this project).
+      - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
