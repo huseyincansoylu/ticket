@@ -1,0 +1,57 @@
+{
+  "info": {
+    "name": "booking-service — holds",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4001" },
+    { "key": "eventId", "value": "event1" },
+    { "key": "seatId", "value": "seatA1" }
+  ],
+  "item": [
+    {
+      "name": "Acquire hold (POST)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"userA\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/events/{{eventId}}/seats/{{seatId}}/hold",
+          "host": ["{{baseUrl}}"],
+          "path": ["events", "{{eventId}}", "seats", "{{seatId}}", "hold"]
+        }
+      }
+    },
+    {
+      "name": "Get hold (GET)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/events/{{eventId}}/seats/{{seatId}}/hold",
+          "host": ["{{baseUrl}}"],
+          "path": ["events", "{{eventId}}", "seats", "{{seatId}}", "hold"]
+        }
+      }
+    },
+    {
+      "name": "Release hold (DELETE)",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"userA\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/events/{{eventId}}/seats/{{seatId}}/hold",
+          "host": ["{{baseUrl}}"],
+          "path": ["events", "{{eventId}}", "seats", "{{seatId}}", "hold"]
+        }
+      }
+    }
+  ]
+}

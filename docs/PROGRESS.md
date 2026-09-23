@@ -2,7 +2,7 @@
 
 ## Status
 
-Milestone 1 complete: domain model, Prisma schema, and a real migration against Postgres.
+Milestone 2 complete: booking-service seat holds implemented and verified live via Postman.
 
 ## Completed milestones
 
@@ -32,23 +32,37 @@ Milestone 1 complete: domain model, Prisma schema, and a real migration against 
   the `booking` schema, verified via `psql`: `Ticket_eventId_seatId_key` and
   `EventSeat_eventId_seatId_key` UNIQUE constraints both present, all foreign keys in place.
 
+### Milestone 2 — Booking service: seat holds and expiration with Redis
+
+- NestJS chosen as the HTTP framework for all backend services (over Fastify/Express).
+- `RedisModule` (ioredis client provider), `HoldsModule`/`HoldsController`
+  (`POST`/`DELETE`/`GET` on `/events/:eventId/seats/:seatId/hold`), `AppModule`, `main.ts`.
+- Switched booking-service from a hand-rolled `tsx` dev loop to the official `@nestjs/cli`
+  (CommonJS, not ESM) — `tsx`/esbuild does not support `emitDecoratorMetadata`, which broke
+  NestJS's constructor-based dependency injection (`this.holds` was `undefined` in the
+  controller). `nest build`/`nest start --watch` use the real `tsc`, so DI works correctly.
+  Worth an ADR: this project now has two module systems (ESM for `shared-types`, CommonJS for
+  NestJS services) — deliberate, not an oversight.
+- `HoldsService` implemented by hand: `acquireHold` (`SET key value EX 600 NX`), `releaseHold`
+  (atomic Lua compare-and-delete — `GET` + compare `userId` + `DEL` in one script, since a plain
+  `DEL` could delete a different user's hold if the TTL expired and someone else grabbed the seat
+  in between), `getHold` (`GET` + `PTTL` to compute `expiresAt`).
+- Verified live via a Postman collection (`services/booking-service/postman-collection.json`):
+  acquire → 201, acquire again (same seat) → 409 Conflict, release (wrong user) → 404, release
+  (right user) → released: true, re-acquire after release → 201, get → correct hold with
+  `expiresAt`.
+
 ## Current step
 
-Milestone 2 — Booking service: seat holds and expiration with Redis.
-
-- Done: NestJS chosen as the HTTP framework for all backend services. Boilerplate wired up for
-  booking-service — `RedisModule` (ioredis client provider), `HoldsModule`/`HoldsController`
-  (`POST`/`DELETE`/`GET` on `/events/:eventId/seats/:seatId/hold`), `AppModule`, `main.ts`.
-  Boots cleanly (`pnpm --filter @ticket/booking-service dev`), routes verified reachable.
-- Not done yet: `HoldsService` (`src/holds/holds.service.ts`) — `acquireHold`, `releaseHold`,
-  `getHold` are stubbed (`throw new Error("not implemented")`). This is the actual business
-  logic (SET NX EX for acquire, atomic Lua compare-and-delete for release) — intentionally left
-  for hands-on implementation rather than scaffolded.
+Milestone 3 — Concurrency tests proving zero double booking.
 
 ## Open questions
 
 - Which service's Postgres schema owns `Order`/`Ticket` — assumed booking-service for now (per
   architecture doc), payment-service only tracks `Payment` records referencing `orderId`.
-- Reminder: Postgres is on host port **5433**, not 5432 (pre-existing native Postgres process on
-  this machine). booking-service also moved off its default port 3001 to **4001** for the same
-  reason (an unrelated local Node process was already on 3001).
+- Reminder: Postgres is on host port **5433**, not 5432; booking-service is on **4001**, not the
+  NestJS default 3001 — both because of pre-existing unrelated local processes on this machine.
+- No automated tests yet for `HoldsService` — milestone 3 is exactly this (concurrency tests).
+- `api-gateway` is still an unbuilt placeholder. Clarified with the user: the CLAUDE.md "no more
+  than three backend services" non-goal refers to the three domain services (booking, payment,
+  notification) — the gateway is an edge/routing layer, not counted against that limit.

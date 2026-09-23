@@ -1,13 +1,13 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { Redis } from "ioredis";
 import type { Hold } from "@ticket/shared-types";
-import { REDIS_CLIENT } from "../redis/redis.module.js";
+import { REDIS_CLIENT } from "../redis/redis.module";
 
 export const HOLD_TTL_SECONDS = 600; // 10 minutes
 
 @Injectable()
 export class HoldsService {
-  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) { }
 
   private holdKey(eventId: string, seatId: string): string {
     return `hold:${eventId}:${seatId}`;
@@ -21,7 +21,9 @@ export class HoldsService {
    * acquired, false if the seat was already held by someone else.
    */
   async acquireHold(eventId: string, seatId: string, userId: string): Promise<boolean> {
-    throw new Error("not implemented");
+    const key = this.holdKey(eventId, seatId);
+    const result = await this.redis.set(key, userId, "EX", HOLD_TTL_SECONDS, "NX");
+    return result === "OK";
   }
 
   /**
@@ -36,7 +38,19 @@ export class HoldsService {
    * was no hold, or it belonged to someone else.
    */
   async releaseHold(eventId: string, seatId: string, userId: string): Promise<boolean> {
-    throw new Error("not implemented");
+    const key = this.holdKey(eventId, seatId);
+
+    const script = `
+      if redis.call("get", KEYS[1]) == ARGV[1] then
+        return redis.call("del", KEYS[1])
+      else
+        return 0
+      end
+    `;
+
+    const result = await this.redis.eval(script, 1, key, userId);
+
+    return result === 1;
   }
 
   /**
@@ -47,6 +61,17 @@ export class HoldsService {
    * (milliseconds) or `ttl` (seconds).
    */
   async getHold(eventId: string, seatId: string): Promise<Hold | null> {
-    throw new Error("not implemented");
+    const key = this.holdKey(eventId, seatId);
+
+    const userId = await this.redis.get(key);
+    if (userId === null) {
+      return null;
+    }
+
+    const ttlMs = await this.redis.pttl(key);
+    const expiresAt = new Date(Date.now() + ttlMs);
+
+    return { eventId, seatId, userId, expiresAt };
   }
+
 }

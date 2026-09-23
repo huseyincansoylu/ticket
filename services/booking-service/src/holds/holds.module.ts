@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
-import { HoldsController } from "./holds.controller.js";
-import { HoldsService } from "./holds.service.js";
+import { HoldsController } from "./holds.controller";
+import { HoldsService } from "./holds.service";
 
 @Module({
   controllers: [HoldsController],

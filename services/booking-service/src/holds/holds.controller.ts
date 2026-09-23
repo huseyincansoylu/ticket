@@ -1,5 +1,5 @@
 import { Body, ConflictException, Controller, Delete, Get, NotFoundException, Param, Post } from "@nestjs/common";
-import { HoldsService } from "./holds.service.js";
+import { HoldsService } from "./holds.service";
 
 @Controller("events/:eventId/seats/:seatId/hold")
 export class HoldsController {
