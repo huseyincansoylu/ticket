@@ -1,0 +1,119 @@
+datasource db {
+  provider = "postgresql"
+  schemas  = ["booking"]
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+model Venue {
+  id       String    @id @default(cuid())
+  name     String
+  address  String
+  sections Section[]
+  events   Event[]
+
+  @@schema("booking")
+}
+
+model Section {
+  id      String @id @default(cuid())
+  name    String
+  venueId String
+  venue   Venue  @relation(fields: [venueId], references: [id])
+  rows    Row[]
+
+  @@schema("booking")
+}
+
+model Row {
+  id        String  @id @default(cuid())
+  label     String
+  sectionId String
+  section   Section @relation(fields: [sectionId], references: [id])
+  seats     Seat[]
+
+  @@schema("booking")
+}
+
+model Seat {
+  id         String      @id @default(cuid())
+  number     String
+  rowId      String
+  row        Row         @relation(fields: [rowId], references: [id])
+  eventSeats EventSeat[]
+  tickets    Ticket[]
+
+  @@schema("booking")
+}
+
+model Event {
+  id         String      @id @default(cuid())
+  venueId    String
+  name       String
+  startsAt   DateTime
+  venue      Venue       @relation(fields: [venueId], references: [id])
+  eventSeats EventSeat[]
+  orders     Order[]
+  tickets    Ticket[]
+
+  @@schema("booking")
+}
+
+enum SeatStatus {
+  AVAILABLE
+  HELD
+  SOLD
+
+  @@schema("booking")
+}
+
+model EventSeat {
+  id      String     @id @default(cuid())
+  eventId String
+  seatId  String
+  status  SeatStatus
+  event   Event      @relation(fields: [eventId], references: [id])
+  seat    Seat       @relation(fields: [seatId], references: [id])
+
+  @@unique([eventId, seatId])
+  @@schema("booking")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  EXPIRED
+
+  @@schema("booking")
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  eventId   String
+  status    OrderStatus
+  createdAt DateTime    @default(now())
+  event     Event       @relation(fields: [eventId], references: [id])
+  tickets   Ticket[]
+
+  @@schema("booking")
+}
+
+model Ticket {
+  id        String   @id @default(cuid())
+  orderId   String
+  eventId   String
+  seatId    String
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id])
+  event     Event    @relation(fields: [eventId], references: [id])
+  seat      Seat     @relation(fields: [seatId], references: [id])
+
+  // (eventId, seatId) must be unique — DB-level double-booking guard
+  @@unique([eventId, seatId])
+  @@schema("booking")
+}

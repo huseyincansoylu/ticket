@@ -2,7 +2,8 @@
 
 ## Status
 
-Milestone 1 in progress: TypeScript domain model drafted, Prisma schema next.
+Milestone 1 in progress: domain model drafted and translated to a Prisma schema.
+Not yet migrated against a live Postgres (Docker daemon not running locally).
 
 ## Completed milestones
 
@@ -24,12 +25,16 @@ Milestone 1 — Domain and data model.
 - Done: TypeScript domain model drafted in `packages/shared-types/src/index.ts` — `Venue`,
   `Section`, `Row`, `Seat` (physical inventory), `Event`, `EventSeat` (per-event seat status),
   `Order`, `Ticket`, and the Redis-backed `Hold` type (no `id` — composite key is the identity).
-- Next: translate this into a Prisma schema for the booking-service's Postgres schema, with real
-  constraints (`@@unique([eventId, seatId])` on both `EventSeat` and `Ticket`).
+- Done: `services/booking-service/prisma/schema.prisma` — full translation of the domain model
+  into Prisma models, all in the `booking` Postgres schema (Prisma 7's `schemas` multi-schema
+  support, now GA — no `previewFeatures` flag needed). `@@unique([eventId, seatId])` on both
+  `EventSeat` and `Ticket`. `prisma validate` and `prisma generate` both pass.
+- Next: get Postgres running (`docker compose up -d`) and run `db:migrate` for real — not yet
+  verified against a live database. Then move to milestone 2 (booking service seat holds).
 
 ## Open questions
 
-- Docker Compose still needs a live `docker compose up` smoke test (Docker daemon wasn't running
-  when milestone 0 was set up).
+- Docker Compose still needs a live `docker compose up` smoke test, and the Prisma schema still
+  needs a live `prisma migrate dev` run — Docker daemon wasn't running locally in this session.
 - Which service's Postgres schema owns `Order`/`Ticket` — assumed booking-service for now (per
   architecture doc), payment-service only tracks `Payment` records referencing `orderId`.
