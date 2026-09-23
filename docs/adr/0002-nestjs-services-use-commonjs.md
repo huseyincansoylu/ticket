@@ -44,3 +44,15 @@ an ESM-only package, that will need revisiting (e.g. dynamic `import()`).
 - `tsx`/`ts-node`-style fast dev runners are avoided for NestJS services specifically, because of
   the `emitDecoratorMetadata` gap. `nest start --watch` is slightly slower to restart than `tsx
   watch` but is correct.
+
+## Update (milestone 3, adding Jest)
+
+`@nestjs/common`/`@nestjs/core`/`@nestjs/platform-express` were initially installed at `^12`.
+`nest build`/`nest start` ran fine — `node` can `require()` an ESM package transparently on
+Node 24 — but **Jest** could not: `@nestjs/common@12.x` ships `"type": "module"`, and
+`jest-runtime` refuses to `require()` an ESM file from a CommonJS test, even with
+`transformIgnorePatterns` adjusted for pnpm's nested `.pnpm/` store layout and a `babel-jest`
+transform added specifically for it. Rather than fight a very recent (and still ecosystem-fragile)
+NestJS major version's ESM migration, **all `@nestjs/*` packages are pinned to `^11`**, which is
+still CommonJS (no `"type"` field). This sidesteps the whole class of problem for this project's
+purposes; revisit when NestJS 12's ESM support and its tooling (Jest, ts-jest) have matured.
