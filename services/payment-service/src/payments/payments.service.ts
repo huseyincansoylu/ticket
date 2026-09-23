@@ -9,7 +9,7 @@ export class PaymentsService {
   constructor(
     @Inject(IYZICO_CLIENT) private readonly iyzico: Iyzipay,
     @Inject(PRISMA_CLIENT) private readonly prisma: PrismaClient,
-  ) {}
+  ) { }
 
   /**
    * Start a payment for an order: create a PENDING Payment row, then ask
@@ -27,7 +27,86 @@ export class PaymentsService {
    * `new Promise((resolve, reject) => ...)` to use it with async/await.
    */
   async initiatePayment(orderId: string, amount: string, currency: string) {
-    throw new Error("not implemented");
+    const idempotencyKey = `payment:${orderId}`;
+
+    let payment;
+    try {
+      payment = await this.prisma.payment.create({
+        data: { orderId, amount, currency, idempotencyKey },
+      });
+    } catch (error: any) {
+      if (error.code === "P2002") {
+        // Bu orderId için zaten bir Payment var — yeni oluşturmak yerine mevcudu kullan.
+        payment = await this.prisma.payment.findUniqueOrThrow({
+          where: { idempotencyKey },
+        });
+      } else {
+        throw error;
+      }
+    }
+
+    // iyzico's checkoutFormInitialize.create is callback-style, not
+    // Promise-based, so it's wrapped here. Note: @types/iyzipay's request
+    // type requires a `paymentCard` field that doesn't actually apply to
+    // the hosted Checkout Form flow (you never collect card details
+    // yourself), so the request object is cast with `as any` below —
+    // verified against a real sandbox call. The real response also includes
+    // `paymentPageUrl` and `payWithIyzicoPageUrl` (redirect targets) and a
+    // `signature` field, none of which are in this community type package's
+    // `CheckoutFormInitialResult` — useful for `handleWebhook` later.
+    const checkoutForm = await new Promise<Iyzipay.CheckoutFormInitialResult>((resolve, reject) => {
+      this.iyzico.checkoutFormInitialize.create(
+        {
+          locale: "tr",
+          conversationId: orderId,
+          price: amount,
+          paidPrice: amount,
+          currency,
+          installments: 1,
+          basketId: orderId,
+          paymentGroup: "PRODUCT",
+          callbackUrl: `${process.env.APP_URL ?? "http://localhost:4002"}/payments/callback`,
+          buyer: {
+            id: `buyer-${orderId}`,
+            name: "Test",
+            surname: "User",
+            email: "test-buyer@example.com",
+            identityNumber: "74300864791",
+            registrationAddress: "Test address, no. 1",
+            ip: "85.34.78.112",
+            city: "Istanbul",
+            country: "Turkey",
+          },
+          shippingAddress: {
+            contactName: "Test User",
+            city: "Istanbul",
+            country: "Turkey",
+            address: "Test address, no. 1",
+          },
+          billingAddress: {
+            contactName: "Test User",
+            city: "Istanbul",
+            country: "Turkey",
+            address: "Test address, no. 1",
+          },
+          basketItems: [
+            {
+              id: orderId,
+              name: `Order ${orderId}`,
+              category1: "Tickets",
+              itemType: "VIRTUAL",
+              price: amount,
+            },
+          ],
+        } as any,
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result);
+        },
+      );
+    });
+
+    return checkoutForm;
   }
 
   /**

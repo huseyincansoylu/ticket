@@ -2,7 +2,8 @@
 
 ## Status
 
-Milestone 4 in progress: payment-service boilerplate scaffolded, core payment/webhook logic next.
+Milestone 4 in progress: initiatePayment implemented and verified against a live iyzico sandbox
+call (real success response). handleWebhook is next.
 
 ## Completed milestones
 
@@ -87,10 +88,18 @@ Milestone 4 — Payment service: iyzico sandbox, webhooks, idempotency.
   `new PrismaClient({ adapter })`. Fixed for payment-service; booking-service's Prisma output path
   updated for consistency (it doesn't use its generated client in code yet, so no adapter/`?schema`
   changes needed there yet).
-- Not done yet: `PaymentsService.initiatePayment` and `PaymentsService.handleWebhook` — both
-  stubbed (`throw new Error("not implemented")`). This is the milestone's actual business logic
-  (idempotent payment creation via iyzico's checkout form, webhook signature verification,
-  idempotent webhook processing) — intentionally left for hands-on implementation.
+- `PaymentsService.initiatePayment` implemented: idempotency (try `payment.create`, catch Prisma
+  error code `P2002`, look up the existing row by `idempotencyKey` instead of creating a second
+  one — written by hand) + iyzico's `checkoutFormInitialize.create` call (dummy buyer/basket data,
+  since there's no buyer domain model yet).
+- Verified live against real iyzico sandbox: idempotency proven first (two requests for the same
+  `orderId`, including one that hit a transient `ECONNRESET` mid-call, still resulted in exactly
+  one `Payment` row in Postgres). Then, after adding a required `email` field the community
+  `@types/iyzipay` package doesn't mark as required, got a real `"status":"success"` response with
+  `checkoutFormContent`, `paymentPageUrl`, `payWithIyzicoPageUrl`, and a `signature` field — none
+  of which are in `CheckoutFormInitialResult`'s type, another type-package gap worth remembering.
+- Not done yet: `PaymentsService.handleWebhook` — stubbed (`throw new Error("not implemented")`).
+  Webhook signature verification and idempotent webhook processing, to be written by hand next.
 
 ## Open questions
 
