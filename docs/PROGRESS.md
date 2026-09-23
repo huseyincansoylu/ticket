@@ -67,7 +67,14 @@ Milestone 3 complete: automated test proves zero double booking under real concu
 
 ## Current step
 
-Milestone 4 — Payment service: Stripe test mode, webhooks, idempotency.
+Milestone 4 — Payment service: iyzico sandbox, webhooks, idempotency.
+
+- Payment provider switched from Stripe to iyzico — Stripe does not support merchant accounts
+  registered in Turkey (verified: only ~46 countries supported, Turkey not among them, and this
+  applies to test mode too since account creation itself is country-gated). See
+  [ADR 0003](./adr/0003-payment-provider-iyzico-not-stripe.md). `CLAUDE.md` updated accordingly.
+- Next: sign up for an iyzico sandbox account, then start with the webhook concept (what problem
+  it solves, signature verification) before writing any payment-service code.
 
 ## Open questions
 

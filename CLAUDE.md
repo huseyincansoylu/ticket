@@ -38,7 +38,7 @@ An event ticketing system that handles a high-demand "on-sale" moment: thousands
 1. **No double booking** — two users can never buy the same seat.
 2. **Temporary holds** — a selected seat is held for 10 minutes; if unpaid, it is released automatically.
 3. **Payment/reservation consistency** — every flow either completes or is cleanly rolled back (no "paid but no ticket").
-4. **Idempotency** — double clicks and duplicate Stripe webhooks never cause double charges or duplicate tickets.
+4. **Idempotency** — double clicks and duplicate payment-provider webhooks never cause double charges or duplicate tickets.
 5. **Real-time seat map** — seat changes appear instantly for all viewers without refreshing.
 6. **Spike resilience** — the booking path scales independently; side effects (emails) never slow down sales.
 
@@ -47,7 +47,7 @@ An event ticketing system that handles a high-demand "on-sale" moment: thousands
 - **Web app** — Next.js, real-time SVG seat map (TanStack Query for snapshot, Zustand for seat state, WebSocket for deltas).
 - **API gateway / BFF** — auth, rate limiting, routing.
 - **Booking service** — seat holds (Redis `SET NX EX`), releases, expirations, confirmations.
-- **Payment service** — Stripe (test mode), webhooks, idempotency keys.
+- **Payment service** — iyzico (sandbox), webhooks, idempotency keys. (Originally planned as Stripe; Stripe does not support merchant accounts registered in Turkey — see [ADR 0003](docs/adr/0003-payment-provider-iyzico-not-stripe.md).)
 - **Notification service** — emails and real-time fan-out to the seat map (Socket.IO with Redis adapter).
 - **Message broker** — RabbitMQ; events published via the transactional outbox pattern.
 - **Data** — PostgreSQL with a separate schema per service; Redis for holds and pub/sub.
@@ -68,7 +68,7 @@ No Kubernetes, no Kafka, no service mesh, no more than three backend services. S
 1. Domain and data model (event, venue, section, row, seat, hold, order, ticket)
 2. Booking service: seat holds and expiration with Redis
 3. Concurrency tests proving zero double booking
-4. Payment service: Stripe test mode, webhooks, idempotency
+4. Payment service: iyzico sandbox, webhooks, idempotency
 5. RabbitMQ and the transactional outbox pattern
 6. Saga: payment failure compensation, hold expiry flow
 7. Realtime gateway and the live seat map UI
